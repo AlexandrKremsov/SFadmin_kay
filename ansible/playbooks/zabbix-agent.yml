@@ -1,0 +1,39 @@
+---
+ - hosts: zabbix_agent
+   become: yes
+   vars:
+       pathZabbixAgentd: "{{ '/etc/zabbix_agentd.conf' if ansible_os_family == 'RedHat' else '/etc/zabbix/zabbix_agentd.conf' }}"
+       strHostname: "{{ '^Hostname=' if ansible_os_family == 'RedHat' else '^# Hostname=' }}"
+
+   tasks:
+
+    - name: Install zabbix-agent on RedHat Family
+      yum:
+         name=zabbix-agent
+      when:
+          ansible_os_family == 'RedHat'
+
+    - name: Install zabbix-agent on Ubuntu
+      apt:
+         name=zabbix-agent
+         state=latest
+      when:
+         ansible_os_family == 'Debian'
+
+    - name: Change a Server
+      lineinfile: dest={{ pathZabbixAgentd  }}
+                  regexp='^Server='
+                  insertbefore=BOF
+                  line='Server=192.168.0.27'
+                          
+    - name: Change a Hostname
+      lineinfile: dest={{ pathZabbixAgentd  }}
+                  regexp={{ strHostname }}
+                  insertbefore=BOF
+                  line=Hostname={{ ansible_hostname }}
+
+    - name: Zabbix-agent systemd
+      systemd:
+       name: zabbix-agent.service
+       enabled: yes
+       state: started
